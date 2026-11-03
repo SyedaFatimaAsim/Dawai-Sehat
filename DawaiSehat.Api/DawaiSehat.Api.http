@@ -1,0 +1,36 @@
+@host = http://localhost:5069
+@tunnel = https://YOUR-TUNNEL.devtunnels.ms
+@phone = 92XXXXXXXXXX
+@verifyToken = YOUR_VERIFY_TOKEN
+
+### App chal rahi hai ya nahi
+GET {{host}}/
+
+### Reminder bhejna
+POST {{host}}/send-message?phoneNumber={{phone}}&medicine=Panadol
+
+### Webhook verify (sahi token)
+GET {{host}}/webhook?hub.mode=subscribe&hub.verify_token={{verifyToken}}&hub.challenge=12345
+
+### Webhook verify (ghalat token)
+GET {{host}}/webhook?hub.mode=subscribe&hub.verify_token=ghalat&hub.challenge=12345
+
+### Webhook POST (nakli message, tunnel ke zariye)
+POST {{tunnel}}/webhook
+Content-Type: application/json
+
+{
+  "object": "whatsapp_business_account",
+  "entry": [{
+    "changes": [{
+      "field": "messages",
+      "value": {
+        "messages": [{
+          "from": "{{phone}}",
+          "type": "text",
+          "text": { "body": "le li" }
+        }]
+      }
+    }]
+  }]
+}
