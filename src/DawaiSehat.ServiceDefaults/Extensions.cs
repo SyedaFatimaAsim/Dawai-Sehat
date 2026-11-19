@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Http.Resilience;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,8 +29,9 @@ public static class Extensions
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
-            // Turn on resilience by default
-            http.AddStandardResilienceHandler();
+            // Turn on resilience by default, but never retry POST/PUT/DELETE: a retried
+            // WhatsApp send that Meta already accepted would remind the patient twice.
+            http.AddStandardResilienceHandler(o => o.Retry.DisableForUnsafeHttpMethods());
 
             // Turn on service discovery by default
             http.AddServiceDiscovery();

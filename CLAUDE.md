@@ -6,7 +6,7 @@ This is a portfolio project. The owner (Fatima) reviews every change as architec
 
 **The full product plan is in `docs/architecture.md`** (in English): features and phases, tech stack and why, the three services, Kafka topics, outbox, Redis, database tables and indexes, RAG, agent tools, safety rules and the 2-week build plan. Test cases are in `docs/testing/test-plan.md`. Read it before planning any feature, and follow its safety rules strictly.
 
-Done so far: solution layout, Reminder service with WhatsApp send and webhook verify/receive. Not done yet: Care and Prescription services, PostgreSQL, Identity/JWT, Aspire, Kafka, RAG, deployment. Follow the build plan in section 12 of `docs/architecture.md`, one small task per pull request. The main branch is `master`.
+Done so far: solution layout, Reminder service with WhatsApp send and webhook verify/receive. Not done yet: Care and Prescription services, PostgreSQL, Identity/JWT, Kafka, RAG, deployment. Follow the build plan in section 12 of `docs/architecture.md`, one small task per pull request. The main branch is `master`.
 
 ## Current state
 

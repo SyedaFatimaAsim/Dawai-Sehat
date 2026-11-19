@@ -46,6 +46,8 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | WA-02 | API | Meta sender selected | `WhatsApp:UseFake = false` | `IWhatsappSender` is `MetaWhatsappSender` | P1 | Passing | WhatsappWiringTests.Sender_UseFakeFalse_IsMetaWhatsappSender |
 | WA-03 | Unit | Send posts a text message | Fake HTTP handler, `SendMessageAsync("920000000001", "le li")` | POST to `.../messages` with `messaging_product`, `to`, `type = text`, `text.body` | P1 | Passing | MetaWhatsappSenderTests.SendMessage_Success_PostsTextMessageToMessagesEndpoint |
 | WA-04 | Unit | Meta returns an error | Fake handler returns 400 | `InvalidOperationException` thrown | P2 | Passing | MetaWhatsappSenderTests.SendMessage_MetaReturnsError_Throws |
+| WA-05 | Unit | Failed send is not retried | Handler returns 503 | Exactly one HTTP call, `InvalidOperationException` thrown | P1 | Passing | WhatsappRetryTests.SendMessage_ServerError_IsNotRetried |
+
 
 ### 3.1 Webhook (Reminder Service)
 
