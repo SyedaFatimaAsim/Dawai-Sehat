@@ -11,9 +11,13 @@ using OpenTelemetry.Trace;
 
 namespace Microsoft.Extensions.Hosting;
 
-// Adds common Aspire services: service discovery, resilience, health checks, and OpenTelemetry.
-// This project should be referenced by each service project in your solution.
-// To learn more about using this project, see https://aka.ms/aspire/service-defaults
+// "ServiceDefaults" is the standard Aspire name. In plain words: the shared startup setup
+// that every Dawai Sehat service calls with builder.AddServiceDefaults(). It does four jobs:
+//   1. Observability (OpenTelemetry): logs, metrics and traces, so one request can be followed across services.
+//   2. Health checks: /health and /alive, which Docker and AWS use to ask "is this service OK?".
+//   3. Service discovery: services find each other by name instead of hard-coded addresses.
+//   4. HTTP resilience: timeouts and retries for outgoing HTTP calls (retries are OFF for POST, see below).
+// Every service project references this project. See https://aka.ms/aspire/service-defaults
 public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
