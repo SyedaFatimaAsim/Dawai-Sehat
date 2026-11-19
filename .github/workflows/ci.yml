@@ -7,9 +7,19 @@ on:
   push:
     branches: [master]
 
+# Read-only token: this workflow never needs to write to the repository.
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the older, now useless run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
