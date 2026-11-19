@@ -38,13 +38,22 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 
 ## 3. Test cases
 
+### 3.0 WhatsApp sender (Reminder Service)
+
+| ID | Level | Scenario | Steps / input | Expected result | Priority | Status | Test name |
+|---|---|---|---|---|---|---|---|
+| WA-01 | API | Fake sender selected | `WhatsApp:UseFake = true` | `IWhatsappSender` is `FakeWhatsappSender` | P1 | Passing | WhatsappWiringTests.Sender_UseFakeTrue_IsFakeWhatsappSender |
+| WA-02 | API | Meta sender selected | `WhatsApp:UseFake = false` | `IWhatsappSender` is `MetaWhatsappSender` | P1 | Passing | WhatsappWiringTests.Sender_UseFakeFalse_IsMetaWhatsappSender |
+| WA-03 | Unit | Send posts a text message | Fake HTTP handler, `SendMessageAsync("920000000001", "le li")` | POST to `.../messages` with `messaging_product`, `to`, `type = text`, `text.body` | P1 | Passing | MetaWhatsappSenderTests.SendMessage_Success_PostsTextMessageToMessagesEndpoint |
+| WA-04 | Unit | Meta returns an error | Fake handler returns 400 | `InvalidOperationException` thrown | P2 | Passing | MetaWhatsappSenderTests.SendMessage_MetaReturnsError_Throws |
+
 ### 3.1 Webhook (Reminder Service)
 
 | ID | Level | Scenario | Steps / input | Expected result | Priority | Status | Test name |
 |---|---|---|---|---|---|---|---|
-| WH-01 | API | Verify with correct token | GET `/webhook?hub.mode=subscribe&hub.verify_token=<configured>&hub.challenge=12345` | 200, body `12345` | P1 | Planned | |
-| WH-02 | API | Verify with wrong token | Same with `hub.verify_token=wrong` | 403 | P1 | Planned | |
-| WH-03 | API | Verify with missing parameters | GET `/webhook` | 403 | P2 | Planned | |
+| WH-01 | API | Verify with correct token | GET `/webhook?hub.mode=subscribe&hub.verify_token=<configured>&hub.challenge=12345` | 200, body `12345` | P1 | Passing | WebhookVerifyTests.Verify_CorrectToken_ReturnsChallenge |
+| WH-02 | API | Verify with wrong token | Same with `hub.verify_token=wrong` | 403 | P1 | Passing | WebhookVerifyTests.Verify_WrongToken_Returns403 |
+| WH-03 | API | Verify with missing parameters | GET `/webhook` | 403 | P2 | Passing | WebhookVerifyTests.Verify_MissingParameters_Returns403 |
 | WH-04 | API | Valid text message | POST sample Meta payload with `text.body = "le li"` and valid signature | 200; one row in `inbound_messages` | P1 | Planned | |
 | WH-05 | API | Invalid signature | POST payload with wrong `X-Hub-Signature-256` | 401; nothing saved | P1 | Planned | |
 | WH-06 | API | Status update, not a message | POST payload with `statuses` and no `messages` | 200; nothing saved | P2 | Planned | |

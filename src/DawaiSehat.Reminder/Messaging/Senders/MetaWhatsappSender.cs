@@ -1,7 +1,7 @@
-﻿using DawaiSehat.Api.Messaging.DawaiSehat.Api.Messaging;
-using DawaiSehat.Api.Messaging.Interfaces;
+﻿using DawaiSehat.Reminder.Messaging;
+using DawaiSehat.Reminder.Messaging.Interfaces;
 
-namespace DawaiSehat.Api.Messaging.Senders
+namespace DawaiSehat.Reminder.Messaging.Senders
 {
     public class MetaWhatsappSender:IWhatsappSender
     {

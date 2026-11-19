@@ -6,16 +6,18 @@ This is a portfolio project. The owner (Fatima) reviews every change as architec
 
 **The full product plan is in `docs/architecture.md`** (in English): features and phases, tech stack and why, the three services, Kafka topics, outbox, Redis, database tables and indexes, RAG, agent tools, safety rules and the 2-week build plan. Test cases are in `docs/testing/test-plan.md`. Read it before planning any feature, and follow its safety rules strictly.
 
-Done so far: API project, WhatsApp send, webhook verify and receive. Not done yet: service projects, PostgreSQL, Identity/JWT, Aspire, Kafka, RAG, deployment. Follow the build plan in section 12 of `docs/architecture.md`, one small task per pull request. The main branch is `master`.
+Done so far: solution layout, Reminder service with WhatsApp send and webhook verify/receive. Not done yet: Care and Prescription services, PostgreSQL, Identity/JWT, Aspire, Kafka, RAG, deployment. Follow the build plan in section 12 of `docs/architecture.md`, one small task per pull request. The main branch is `master`.
 
 ## Current state
 
-- `DawaiSehat.Api`: ASP.NET Core minimal API on .NET 10
+- Solution layout follows `docs/architecture.md` section 4.4: `src/` (AppHost, ServiceDefaults, Contracts, Reminder) and `tests/` (Reminder.Tests)
+- `DawaiSehat.Reminder` (the former `DawaiSehat.Api`): ASP.NET Core minimal API on .NET 10
+- `DawaiSehat.AppHost` (.NET Aspire) starts the Reminder service; Care, Prescription, Postgres, Kafka and Redis are added by the tasks that need them
 - `IWhatsappSender` with `FakeWhatsappSender` and `MetaWhatsappSender` (typed HttpClient, `IOptions<WhatsappOptions>`)
 - `POST /send-message`: sends a reminder through the Meta WhatsApp Cloud API
 - `GET /webhook`: Meta verification (hub.mode, hub.verify_token, hub.challenge)
 - `POST /webhook`: receives Meta events; currently only logs the raw JSON
-- Local testing uses a Visual Studio Dev Tunnel and `DawaiSehat.Api.http`
+- Local testing uses a Visual Studio Dev Tunnel and `src/DawaiSehat.Reminder/DawaiSehat.Reminder.http`
 
 ## Target architecture (build towards this step by step)
 
@@ -23,7 +25,7 @@ Three microservices in one repository, each its own ASP.NET Core project with it
 
 - `DawaiSehat.Care`: caregivers, patients, medications, schedules, JWT login
 - `DawaiSehat.Prescription`: prescription photo extraction with Gemini + RAG (pgvector medicine catalog)
-- `DawaiSehat.Reminder`: scheduler, WhatsApp send, webhook, reply parsing, missed-dose alerts (the current `DawaiSehat.Api` becomes this service)
+- `DawaiSehat.Reminder`: scheduler, WhatsApp send, webhook, reply parsing, missed-dose alerts (formerly `DawaiSehat.Api`)
 - Plus: `DawaiSehat.Gateway` (YARP), `DawaiSehat.Contracts` (event records only), `DawaiSehat.AppHost` (.NET Aspire), `DawaiSehat.ServiceDefaults`, React dashboard in `web/`
 
 Keep it simple:
@@ -61,4 +63,5 @@ Do not jump ahead. Add a technology only when the current task needs it.
 
 - Build: `dotnet build`
 - Test: `dotnet test`
-- Run: `dotnet run --project DawaiSehat.Api`
+- Run everything (Aspire): `dotnet run --project src/DawaiSehat.AppHost`
+- Run Reminder only: `dotnet run --project src/DawaiSehat.Reminder`

@@ -1,3 +1,11 @@
 <Solution>
-  <Project Path="DawaiSehat.Api/DawaiSehat.Api.csproj" />
+  <Folder Name="/src/">
+    <Project Path="src/DawaiSehat.AppHost/DawaiSehat.AppHost.csproj" />
+    <Project Path="src/DawaiSehat.Contracts/DawaiSehat.Contracts.csproj" />
+    <Project Path="src/DawaiSehat.Reminder/DawaiSehat.Reminder.csproj" />
+    <Project Path="src/DawaiSehat.ServiceDefaults/DawaiSehat.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DawaiSehat.Reminder.Tests/DawaiSehat.Reminder.Tests.csproj" />
+  </Folder>
 </Solution>
