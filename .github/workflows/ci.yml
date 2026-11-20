@@ -1,0 +1,44 @@
+name: CI
+
+# Builds and runs all tests on every pull request and on pushes to master.
+# External services (Meta WhatsApp, Gemini) are always faked in tests, so no secrets are needed here.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# Read-only token: this workflow never needs to write to the repository.
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the older, now useless run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
