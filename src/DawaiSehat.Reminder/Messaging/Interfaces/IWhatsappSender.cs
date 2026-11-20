@@ -1,4 +1,4 @@
-﻿namespace DawaiSehat.Api.Messaging.Interfaces
+﻿namespace DawaiSehat.Reminder.Messaging.Interfaces
 {
     public interface IWhatsappSender
     {

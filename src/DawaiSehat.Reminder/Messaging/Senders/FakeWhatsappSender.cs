@@ -1,6 +1,6 @@
-﻿using DawaiSehat.Api.Messaging.Interfaces;
+﻿using DawaiSehat.Reminder.Messaging.Interfaces;
 
-namespace DawaiSehat.Api.Messaging.Senders
+namespace DawaiSehat.Reminder.Messaging.Senders
 {
     public class FakeWhatsappSender:IWhatsappSender
     {

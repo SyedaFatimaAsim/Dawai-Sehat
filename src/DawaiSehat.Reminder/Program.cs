@@ -1,10 +1,11 @@
-using DawaiSehat.Api.Messaging.DawaiSehat.Api.Messaging;
-using DawaiSehat.Api.Messaging.Interfaces;
-using DawaiSehat.Api.Messaging.Senders;
+using DawaiSehat.Reminder.Messaging;
+using DawaiSehat.Reminder.Messaging.Interfaces;
+using DawaiSehat.Reminder.Messaging.Senders;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -34,6 +35,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.MapDefaultEndpoints(); // /health and /alive (Development only, see ServiceDefaults)
 
 app.UseHttpsRedirection();
 
@@ -77,3 +80,6 @@ app.MapPost("/webhook", async (HttpRequest request, ILogger<Program> logger) =>
 app.Run();
 
 
+
+// Makes Program visible to WebApplicationFactory in DawaiSehat.Reminder.Tests.
+public partial class Program { }
