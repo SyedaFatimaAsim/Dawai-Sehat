@@ -6,17 +6,18 @@ This is a portfolio project. The owner (Fatima) reviews every change as architec
 
 **The full product plan is in `docs/architecture.md`** (in English): features and phases, tech stack and why, the three services, Kafka topics, outbox, Redis, database tables and indexes, RAG, agent tools, safety rules and the 2-week build plan. Test cases are in `docs/testing/test-plan.md`. Read it before planning any feature, and follow its safety rules strictly.
 
-Done so far: solution layout, Reminder service with WhatsApp send and webhook verify/receive. Not done yet: Care and Prescription services, PostgreSQL, Identity/JWT, Kafka, RAG, deployment. Follow the build plan in section 12 of `docs/architecture.md`, one small task per pull request. The main branch is `master`.
+Done so far: solution layout, Reminder service with WhatsApp send and webhook verify/receive. Not done yet: Care and Prescription services, Identity/JWT, Kafka, RAG, deployment. Follow the build plan in section 12 of `docs/architecture.md`, one small task per pull request. The main branch is `master`.
 
 ## Current state
 
 - Solution layout follows `docs/architecture.md` section 4.4: `src/` (AppHost, ServiceDefaults, Contracts, Reminder) and `tests/` (Reminder.Tests)
 - `DawaiSehat.Reminder` (the former `DawaiSehat.Api`): ASP.NET Core minimal API on .NET 10
-- `DawaiSehat.AppHost` (.NET Aspire) starts the Reminder service; Care, Prescription, Postgres, Kafka and Redis are added by the tasks that need them
+- `DawaiSehat.AppHost` (.NET Aspire) starts PostgreSQL (Docker, data volume) with database `reminder_db` and the Reminder service; Care, Prescription, Kafka and Redis are added by the tasks that need them
+- `DawaiSehat.Reminder/Data/`: `ReminderDbContext`, EF Core migrations (tool pinned in `dotnet-tools.json`); connection string `ConnectionStrings:reminder-db` (Aspire sets it; without Aspire use `dotnet user-secrets`)
 - `IWhatsappSender` with `FakeWhatsappSender` and `MetaWhatsappSender` (typed HttpClient, `IOptions<WhatsappOptions>`)
 - `POST /send-message`: sends a reminder through the Meta WhatsApp Cloud API
 - `GET /webhook`: Meta verification (hub.mode, hub.verify_token, hub.challenge)
-- `POST /webhook`: checks the Meta signature (`WhatsApp:AppSecret`), reads text and voice messages (`Features/ReceiveReplies/`), keeps Meta's send time, saves them in an in-memory store (PostgreSQL comes next), answers 200; logs counts only, never numbers or text. With `UseFake=false` the app refuses to start if a Meta setting is missing
+- `POST /webhook`: checks the Meta signature (`WhatsApp:AppSecret`), reads text and voice messages (`Features/ReceiveReplies/`), saves them in PostgreSQL table `inbound_messages` (unique `whatsapp_message_id`, `INSERT ... ON CONFLICT DO NOTHING`), answers 200; logs counts only, never numbers or text. With `UseFake=false` the app refuses to start if a Meta setting is missing
 - `Domain/ReplyParser`: rule-based reading of replies (Roman Urdu and Urdu script) into `ReplyIntent` (Taken, Later, NotTaken, Unwell, Unknown); not yet connected to the webhook
 - Local testing uses a Visual Studio Dev Tunnel and `src/DawaiSehat.Reminder/DawaiSehat.Reminder.http`
 
@@ -63,6 +64,7 @@ Do not jump ahead. Add a technology only when the current task needs it.
 ## Commands
 
 - Build: `dotnet build`
-- Test: `dotnet test`
+- Test: `dotnet test` (integration tests start PostgreSQL in Docker; Docker Desktop must be running). Only fast tests: `dotnet test --filter "Category!=Integration"`
+- New migration: `dotnet dotnet-ef migrations add <Name> --project src/DawaiSehat.Reminder --output-dir Data/Migrations`
 - Run everything (Aspire): `dotnet run --project src/DawaiSehat.AppHost`
 - Run Reminder only: `dotnet run --project src/DawaiSehat.Reminder`

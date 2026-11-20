@@ -1,11 +1,9 @@
 using System.Collections.Concurrent;
+using DawaiSehat.Reminder.Features.ReceiveReplies;
 
-namespace DawaiSehat.Reminder.Features.ReceiveReplies;
+namespace DawaiSehat.Reminder.Tests.Webhook;
 
-/// <summary>
-/// Temporary store: messages live in memory and are lost on restart.
-/// It is replaced by a PostgreSQL <c>inbound_messages</c> table (unique on whatsapp_message_id) in the next PR.
-/// </summary>
+/// <summary>Test fake for the inbound message store: no database, easy to inspect.</summary>
 public sealed class InMemoryInboundMessageStore : IInboundMessageStore
 {
     private readonly ConcurrentDictionary<string, InboundMessage> _messages = new();

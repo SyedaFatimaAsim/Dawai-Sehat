@@ -1,7 +1,9 @@
+using DawaiSehat.Reminder.Data;
 using DawaiSehat.Reminder.Features.ReceiveReplies;
 using DawaiSehat.Reminder.Messaging;
 using DawaiSehat.Reminder.Messaging.Interfaces;
 using DawaiSehat.Reminder.Messaging.Senders;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,7 +23,12 @@ builder.Services.AddOptions<WhatsappOptions>()
         "When WhatsApp:UseFake is false, WhatsApp:Token, WhatsApp:PhoneNumberId, WhatsApp:VerifyToken and WhatsApp:AppSecret must all be set (use dotnet user-secrets).")
     .ValidateOnStart();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<IInboundMessageStore, InMemoryInboundMessageStore>(); // replaced by PostgreSQL in the next PR
+// Each service has its own database (reminder_db). Aspire injects ConnectionStrings:reminder-db;
+// when running without Aspire, set it with dotnet user-secrets (it contains a password).
+builder.Services.AddDbContext<ReminderDbContext>((sp, options) =>
+    options.UseNpgsql(sp.GetRequiredService<IConfiguration>().GetConnectionString("reminder-db")
+        ?? throw new InvalidOperationException("ConnectionStrings:reminder-db is not set. Run through the AppHost, or use dotnet user-secrets.")));
+builder.Services.AddScoped<IInboundMessageStore, PostgresInboundMessageStore>();
 
 var useFake = builder.Configuration.GetValue("WhatsApp:UseFake", true);
 
@@ -60,6 +67,21 @@ app.MapPost("/send-message", async (IWhatsappSender whatsappSender, string phone
 });
 
 app.MapWebhook();
+
+var hasDatabase = !string.IsNullOrWhiteSpace(app.Configuration.GetConnectionString("reminder-db"));
+if (!hasDatabase && !app.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException("ConnectionStrings:reminder-db must be set outside Development.");
+}
+
+// Migrations: `dotnet run -- --migrate` applies them and exits (the separate deployment step).
+// In Development they are also applied at startup, so a fresh database just works.
+if (hasDatabase && (args.Contains("--migrate") || app.Environment.IsDevelopment()))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<ReminderDbContext>().Database.MigrateAsync();
+    if (args.Contains("--migrate")) return;
+}
 
 app.Run();
 

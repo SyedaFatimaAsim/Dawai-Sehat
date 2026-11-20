@@ -245,7 +245,7 @@ One Postgres server, three databases. `snake_case` names, `timestamptz` (UTC) fo
 |---|---|
 | `patient_schedules` | patient_id, whatsapp_number, medication_name, time_of_day, days_of_week (copy from events) |
 | `dose_events` | id, patient_id, scheduled_at, status (Pending / Taken / Late / Missed / Unwell), reminders_sent, responded_at, response_text, response_intent |
-| `inbound_messages` | id, whatsapp_message_id (unique), patient_id, type (text / audio), body, media_id, received_at |
+| `inbound_messages` | id, whatsapp_message_id (unique), from_number, patient_id (added with the patient lookup on Day 4), type (text / audio), body, media_id, sent_at (Meta time), received_at (our time) |
 | `appointment_reminders` | id, patient_id, appointment_at, sent_at |
 | `outbox_messages`, `processed_events` | standard |
 
