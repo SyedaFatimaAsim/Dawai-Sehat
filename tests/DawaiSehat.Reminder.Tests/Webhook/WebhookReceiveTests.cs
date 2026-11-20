@@ -3,6 +3,7 @@ using System.Text;
 using DawaiSehat.Reminder.Features.ReceiveReplies;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DawaiSehat.Reminder.Tests.Webhook;
@@ -132,12 +133,71 @@ public class WebhookReceiveTests : IDisposable
         _store.All.Should().ContainSingle();
     }
 
-    [Fact] // WH-16
-    public async Task Post_BodyLargerThanLimit_Returns413()
+    // Sends the body WITHOUT a Content-Length header (like a chunked upload). HttpClient fills the header in
+    // by itself, so we talk to the test server directly. An attacker would simply leave the header out.
+    private async Task<HttpStatusCode> PostSignedBytes(byte[] bytes, bool withContentLength)
     {
-        var response = await Post(new string('x', 300 * 1024));
+        if (withContentLength)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/webhook") { Content = new ByteArrayContent(bytes) };
+            request.Headers.Add("X-Hub-Signature-256", WebhookSignature.Compute(bytes, AppSecret));
+            return (await _factory.CreateClient().SendAsync(request)).StatusCode;
+        }
 
-        response.StatusCode.Should().Be(HttpStatusCode.RequestEntityTooLarge);
+        _ = _factory.Server; // make sure the test server is running
+        var context = await _factory.Server.SendAsync(c =>
+        {
+            c.Request.Method = "POST";
+            c.Request.Path = "/webhook";
+            c.Request.Headers["X-Hub-Signature-256"] = WebhookSignature.Compute(bytes, AppSecret);
+            c.Request.Body = new MemoryStream(bytes);
+            c.Request.ContentLength.Should().BeNull("this test is about bodies that do not announce their size");
+        });
+        return (HttpStatusCode)context.Response.StatusCode;
+    }
+
+    [Theory] // WH-16 (with and without Content-Length)
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Post_BodyLargerThanLimit_Returns413(bool withContentLength)
+    {
+        var tooBig = new byte[WebhookEndpoints.MaxBodyBytes + 1];
+        Array.Fill(tooBig, (byte)'x');
+
+        var status = await PostSignedBytes(tooBig, withContentLength);
+
+        status.Should().Be(HttpStatusCode.RequestEntityTooLarge);
         _store.All.Should().BeEmpty();
+    }
+
+    [Theory] // WH-18: the limit is inclusive; this is not valid JSON, but valid size, so 200
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Post_BodyExactlyAtLimit_IsAccepted(bool withContentLength)
+    {
+        var atLimit = new byte[WebhookEndpoints.MaxBodyBytes];
+        Array.Fill(atLimit, (byte)'x');
+
+        var status = await PostSignedBytes(atLimit, withContentLength);
+
+        status.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact] // WH-17: Urdu text must reach the store unchanged (signature is over the raw bytes)
+    public async Task Post_UrduText_IsStoredUnchanged()
+    {
+        var response = await Post(MetaPayloads.Text("wamid.U1", "لے لی"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        _store.All.Should().ContainSingle().Which.Body.Should().Be("لے لی");
+    }
+
+    [Fact] // WH-19: Meta's send time is kept, so a late retry is not mistaken for a reply made now
+    public async Task Post_StoresMetaTimestampAsSentAt()
+    {
+        await Post(MetaPayloads.Text("wamid.S1", "le li"));
+
+        _store.All.Should().ContainSingle().Which.SentAt
+            .Should().Be(DateTimeOffset.FromUnixTimeSeconds(1700000000));
     }
 }

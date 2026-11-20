@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DawaiSehat.Reminder.Messaging;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
@@ -8,7 +9,7 @@ namespace DawaiSehat.Reminder.Features.ReceiveReplies;
 public static class WebhookEndpoints
 {
     // Meta's payloads are a few hundred bytes. Anything bigger is not from Meta; do not read it all into memory.
-    private const int MaxBodyBytes = 256 * 1024;
+    public const int MaxBodyBytes = 256 * 1024;
 
     public static IEndpointRouteBuilder MapWebhook(this IEndpointRouteBuilder app)
     {
@@ -49,6 +50,24 @@ public static class WebhookEndpoints
         ILogger<Program> logger,
         CancellationToken cancellationToken)
     {
+        // Cheap checks first, before reading any body.
+        if (string.IsNullOrEmpty(options.Value.AppSecret))
+        {
+            // Separate message from "bad signature" so a missing setting is not mistaken for an attack.
+            logger.LogError("Webhook rejected: WhatsApp:AppSecret is not configured");
+            return Results.Unauthorized();
+        }
+
+        if (string.IsNullOrEmpty(signature))
+        {
+            logger.LogWarning("Webhook rejected: no signature header");
+            return Results.Unauthorized();
+        }
+
+        // Second wall behind our own limit below (Kestrel's default is about 30 MB).
+        var sizeLimit = request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (sizeLimit is { IsReadOnly: false }) sizeLimit.MaxRequestBodySize = MaxBodyBytes;
+
         var body = await ReadBodyAsync(request, cancellationToken);
         if (body is null)
         {
@@ -58,14 +77,14 @@ public static class WebhookEndpoints
 
         if (!WebhookSignature.IsValid(body, signature, options.Value.AppSecret))
         {
-            logger.LogWarning("Webhook rejected: missing or invalid signature");
+            logger.LogWarning("Webhook rejected: invalid signature");
             return Results.Unauthorized();
         }
 
-        IReadOnlyList<InboundMessage> messages;
+        ParsedWebhook parsed;
         try
         {
-            messages = MetaWebhookParser.Parse(body, time.GetUtcNow());
+            parsed = MetaWebhookParser.Parse(body, time.GetUtcNow());
         }
         catch (JsonException)
         {
@@ -75,16 +94,23 @@ public static class WebhookEndpoints
         }
 
         var stored = 0;
-        foreach (var message in messages)
+        foreach (var message in parsed.Messages)
         {
             if (await store.TryAddAsync(message, cancellationToken)) stored++;
         }
 
-        // Counts only: no phone numbers and no message text in logs.
-        logger.LogInformation("Webhook: {Stored} new message(s), {Duplicates} duplicate(s)", stored, messages.Count - stored);
+        // Counts and message types only: no phone numbers and no message text in logs.
+        logger.LogInformation("Webhook: {Stored} new message(s), {Duplicates} duplicate(s)",
+            stored, parsed.Messages.Count - stored);
+        if (parsed.SkippedTypes.Count > 0)
+        {
+            logger.LogWarning("Webhook: skipped {Count} unsupported message(s) of type(s) {Types}",
+                parsed.SkippedTypes.Count, string.Join(",", parsed.SkippedTypes.Distinct()));
+        }
         return Results.Ok();
     }
 
+    // Reads the body in chunks, so a body with no Content-Length (chunked) is capped too.
     // Returns null when the body is larger than MaxBodyBytes.
     private static async Task<byte[]?> ReadBodyAsync(HttpRequest request, CancellationToken cancellationToken)
     {
@@ -93,10 +119,17 @@ public static class WebhookEndpoints
         using var buffer = new MemoryStream();
         var chunk = new byte[8192];
         int read;
-        while ((read = await request.Body.ReadAsync(chunk, cancellationToken)) > 0)
+        try
         {
-            if (buffer.Length + read > MaxBodyBytes) return null;
-            buffer.Write(chunk, 0, read);
+            while ((read = await request.Body.ReadAsync(chunk, cancellationToken)) > 0)
+            {
+                if (buffer.Length + read > MaxBodyBytes) return null;
+                buffer.Write(chunk, 0, read);
+            }
+        }
+        catch (BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            return null; // Kestrel's own limit tripped
         }
         return buffer.ToArray();
     }

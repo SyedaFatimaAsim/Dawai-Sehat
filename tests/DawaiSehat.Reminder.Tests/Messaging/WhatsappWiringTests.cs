@@ -15,6 +15,8 @@ public class WhatsappWiringTests
             b.UseSetting("WhatsApp:UseFake", useFake.ToString());
             b.UseSetting("WhatsApp:PhoneNumberId", "000000000000000");
             b.UseSetting("WhatsApp:Token", "test-token");
+            b.UseSetting("WhatsApp:VerifyToken", "test-verify-token");
+            b.UseSetting("WhatsApp:AppSecret", "test-app-secret");
         });
 
     [Fact]

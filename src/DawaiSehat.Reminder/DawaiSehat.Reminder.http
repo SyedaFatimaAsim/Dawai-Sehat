@@ -15,23 +15,17 @@ GET {{host}}/webhook?hub.mode=subscribe&hub.verify_token={{verifyToken}}&hub.cha
 ### Webhook verify (ghalat token)
 GET {{host}}/webhook?hub.mode=subscribe&hub.verify_token=ghalat&hub.challenge=12345
 
-### Webhook POST (nakli message). NOTE: /webhook now needs a valid X-Hub-Signature-256 header,
-### so this unsigned request returns 401. Real Meta calls are signed; see the PR description for signing a test body.
+### Webhook POST (nakli message). /webhook now needs a valid X-Hub-Signature-256 header (401 without it).
+### Meta signs the exact body bytes with your App Secret. To sign a test body in PowerShell:
+###   $secret = "YOUR_APP_SECRET"   # same value as WhatsApp:AppSecret; never commit it
+###   $body   = '{"entry":[{"changes":[{"value":{"messages":[{"from":"92XXXXXXXXXX","id":"wamid.TEST1","timestamp":"1700000000","type":"text","text":{"body":"le li"}}]}}]}]}'
+###   $hmac   = [System.Security.Cryptography.HMACSHA256]::new([Text.Encoding]::UTF8.GetBytes($secret))
+###   "sha256=" + [Convert]::ToHexString($hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($body))).ToLower()
+### Paste the result into @signature, and the same $body (one line, no changes) as the request body below.
+@signature = sha256=PASTE_SIGNATURE_HERE
+
 POST {{tunnel}}/webhook
 Content-Type: application/json
+X-Hub-Signature-256: {{signature}}
 
-{
-  "object": "whatsapp_business_account",
-  "entry": [{
-    "changes": [{
-      "field": "messages",
-      "value": {
-        "messages": [{
-          "from": "{{phone}}",
-          "type": "text",
-          "text": { "body": "le li" }
-        }]
-      }
-    }]
-  }]
-}
+{"entry":[{"changes":[{"value":{"messages":[{"from":"{{phone}}","id":"wamid.TEST1","timestamp":"1700000000","type":"text","text":{"body":"le li"}}]}}]}]}

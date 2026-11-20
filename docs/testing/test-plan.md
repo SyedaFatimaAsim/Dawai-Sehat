@@ -47,6 +47,8 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | WA-03 | Unit | Send posts a text message | Fake HTTP handler, `SendMessageAsync("920000000001", "le li")` | POST to `.../messages` with `messaging_product`, `to`, `type = text`, `text.body` | P1 | Passing | MetaWhatsappSenderTests.SendMessage_Success_PostsTextMessageToMessagesEndpoint |
 | WA-04 | Unit | Meta returns an error | Fake handler returns 400 | `InvalidOperationException` thrown | P2 | Passing | MetaWhatsappSenderTests.SendMessage_MetaReturnsError_Throws |
 | WA-05 | Unit | Failed send is not retried | Handler returns 503 | Exactly one HTTP call, `InvalidOperationException` thrown | P1 | Passing | WhatsappRetryTests.SendMessage_ServerError_IsNotRetried |
+| WA-06 | API | Startup check | `UseFake=false` and `AppSecret` empty | App fails to start and the error names `WhatsApp:AppSecret` | P1 | Passing | WhatsappOptionsValidationTests.Start_RealSenderWithoutAppSecret_FailsAndNamesTheSetting |
+| WA-07 | API | Local dev still works | `UseFake=true`, no secrets | App starts | P1 | Passing | WhatsappOptionsValidationTests.Start_FakeSenderWithoutAnySecrets_Starts |
 
 
 ### 3.1 Webhook (Reminder Service)
@@ -68,7 +70,10 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | WH-13 | API | No App Secret configured | `WhatsApp:AppSecret` empty; POST with any signature | 401 (fail closed) | P1 | Passing | WebhookReceiveTests.Post_NoAppSecretConfigured_Returns401EvenWithSomeSignature |
 | WH-14 | API | Voice note | POST signed audio message | 200; saved with `MediaId`, no body | P2 | Passing | WebhookReceiveTests.Post_AudioMessage_StoresMediaId |
 | WH-15 | API | Duplicate delivery (in-memory) | POST the same message ID twice | 200 both times; stored once. WH-08 repeats this against PostgreSQL | P1 | Passing | WebhookReceiveTests.Post_SameMessageTwice_StoresOnceAndBothReturn200 |
-| WH-16 | API | Oversized body | POST 300 KB | 413; nothing saved | P2 | Passing | WebhookReceiveTests.Post_BodyLargerThanLimit_Returns413 |
+| WH-16 | API | Oversized body | POST 256 KB + 1 byte, with and without a Content-Length header | 413; nothing saved | P2 | Passing | WebhookReceiveTests.Post_BodyLargerThanLimit_Returns413 |
+| WH-17 | API | Urdu text | POST signed message with body "لے لی" | Stored unchanged (signature is over raw bytes) | P2 | Passing | WebhookReceiveTests.Post_UrduText_IsStoredUnchanged |
+| WH-18 | API | Body exactly at the limit | POST exactly 256 KB, with and without Content-Length | 200 (limit is inclusive) | P2 | Passing | WebhookReceiveTests.Post_BodyExactlyAtLimit_IsAccepted |
+| WH-19 | API | Meta timestamp kept | POST message with `timestamp` | `SentAt` equals Meta time, not "now" (late retries stay correct) | P1 | Passing | WebhookReceiveTests.Post_StoresMetaTimestampAsSentAt |
 
 ### 3.1a Webhook signature and parsing (Reminder Service)
 
@@ -80,6 +85,7 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | SG-04 | Unit | Missing or broken header | null, empty, no prefix, not hex, wrong length | Invalid; no exception | P1 | Passing | WebhookSignatureTests.IsValid_MissingOrBrokenHeader_ReturnsFalseWithoutThrowing |
 | SG-05 | Unit | No secret configured | Secret null or empty | Invalid (fail closed) | P1 | Passing | WebhookSignatureTests.IsValid_NoSecretConfigured_ReturnsFalse |
 | SG-06 | Unit | Uppercase hex | Same signature in capitals | Valid | P3 | Passing | WebhookSignatureTests.IsValid_UppercaseHex_ReturnsTrue |
+| SG-07 | Unit | Urdu body | Body with Urdu script, signed | Valid | P2 | Passing | WebhookSignatureTests.IsValid_UrduBody_ReturnsTrue |
 | WP-01 | Unit | Text message | Meta text payload | One `InboundMessage` with id, sender, body, type Text | P1 | Passing | MetaWebhookParserTests.Parse_TextMessage_ReturnsTextMessage |
 | WP-02 | Unit | Voice note | Meta audio payload | One message with `MediaId` | P2 | Passing | MetaWebhookParserTests.Parse_AudioMessage_ReturnsAudioWithMediaId |
 | WP-03 | Unit | Status update | Payload with `statuses` only | No messages | P1 | Passing | MetaWebhookParserTests.Parse_StatusUpdate_ReturnsNothing |
@@ -87,6 +93,8 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | WP-05 | Unit | Two messages in one post | Payload with two messages | Both returned, in order | P2 | Passing | MetaWebhookParserTests.Parse_TwoMessagesInOnePost_ReturnsBoth |
 | WP-06 | Unit | Incomplete or odd JSON shapes | `{}`, `[]`, missing id, missing text body ... | Nothing returned; no exception | P1 | Passing | MetaWebhookParserTests.Parse_IncompleteShapes_ReturnsNothingWithoutThrowing |
 | WP-07 | Unit | Invalid JSON | `{ not json` | `JsonException` (the endpoint catches it) | P2 | Passing | MetaWebhookParserTests.Parse_InvalidJson_ThrowsJsonException |
+| WP-08 | Unit | Invalid timestamp | `timestamp` = "abc", "-5", huge number, empty | Message kept, `SentAt` null | P2 | Passing | MetaWebhookParserTests.Parse_InvalidTimestamp_KeepsMessageWithNullSentAt |
+| WP-09 | Unit | Skipped types are reported | Image message | `SkippedTypes` = ["image"], so the endpoint can log it | P2 | Passing | MetaWebhookParserTests.Parse_UnsupportedTypes_AreReportedInSkippedTypes |
 
 ### 3.2 Reply parsing (Reminder Service)
 

@@ -43,6 +43,14 @@ public class WebhookSignatureTests
     public void IsValid_NoSecretConfigured_ReturnsFalse(string? secret) =>
         WebhookSignature.IsValid(Body, WebhookSignature.Compute(Body, "anything"), secret).Should().BeFalse();
 
+    [Fact] // SG-07: the signature is over the raw bytes, so Urdu script must work too
+    public void IsValid_UrduBody_ReturnsTrue()
+    {
+        var urdu = Encoding.UTF8.GetBytes("""{"text":"لے لی"}""");
+
+        WebhookSignature.IsValid(urdu, WebhookSignature.Compute(urdu, Secret), Secret).Should().BeTrue();
+    }
+
     [Fact] // SG-06
     public void IsValid_UppercaseHex_ReturnsTrue()
     {
