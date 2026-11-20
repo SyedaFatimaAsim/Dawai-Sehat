@@ -21,7 +21,8 @@ Status: Reminder service only. Dockerfile and a production health endpoint are p
 |---|---|---|
 | `ConnectionStrings__reminder-db` | **yes** (contains a password) | Npgsql connection string to `reminder_db`. Aspire sets it for local runs |
 
-- Outside Development the service refuses to start if the connection string is missing.
+- Outside Development the service refuses to start if the connection string is missing. `--migrate` also fails without one, and never starts the web server: it migrates and exits.
+- If the service starts before `--migrate` has run, every webhook call returns 500 ("relation does not exist") and Meta retries; nothing is lost. Run `--migrate` first.
 - **Migrations are a separate step:** run the service once with the argument `--migrate` (for example `dotnet DawaiSehat.Reminder.dll --migrate`); it applies pending migrations and exits. In Development they are applied automatically at startup.
 - PostgreSQL 17 or newer (RDS for PostgreSQL works). No extension is needed by this service yet.
 

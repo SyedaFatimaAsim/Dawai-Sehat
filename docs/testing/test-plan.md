@@ -86,6 +86,9 @@ Run only these: `dotnet test --filter "Category=Integration"`.
 | DB-03 | Integration | Audio and missing send time | Audio message, no `SentAt` | Saved; `body` and `sent_at` are NULL | P2 | Passing | InboundMessagesDatabaseTests.TryAdd_AudioWithoutSentAt_SavesNullsAsNull |
 | DB-04 | Integration | Same message 20 times in parallel | 20 parallel `TryAddAsync` with one message ID | Exactly one returns true; one row (no race) | P1 | Passing | InboundMessagesDatabaseTests.TryAdd_SameMessageManyTimesInParallel_InsertsExactlyOnce |
 | DB-05 | Integration | Webhook saves a row | Signed POST against a real database (app migrates it at startup in Development) | 200; row with the message and Meta timestamp | P1 | Passing | InboundMessagesDatabaseTests.Webhook_SignedTextMessage_IsSavedInInboundMessagesTable |
+| DB-06 | Integration | Time with a non-UTC offset | Message times with +05:00 offset | Saved as the same moment (UTC); no error | P2 | Passing | InboundMessagesDatabaseTests.TryAdd_TimesWithLocalOffset_AreStoredAsTheSameMoment |
+| DB-07 | API | Production without a connection string | Environment Production, no `ConnectionStrings:reminder-db` | App fails to start; error names the setting | P1 | Passing | DatabaseStartupTests.Start_ProductionWithoutConnectionString_Fails |
+| DB-08 | API | Development without a database | Environment Development, no connection string | App starts (a warning is logged) | P2 | Passing | DatabaseStartupTests.Start_DevelopmentWithoutConnectionString_Starts |
 
 ### 3.1a Webhook signature and parsing (Reminder Service)
 

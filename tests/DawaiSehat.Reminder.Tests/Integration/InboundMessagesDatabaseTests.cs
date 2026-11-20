@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using System.Net;
 using System.Text;
 using DawaiSehat.Reminder.Data;
@@ -71,6 +72,22 @@ public class InboundMessagesDatabaseTests(PostgresFixture postgres)
         row.SentAt.Should().BeNull();
     }
 
+    [Fact] // DB-06: a time with a non-UTC offset is stored as the same moment (Npgsql rejects non-UTC offsets for timestamptz)
+    public async Task TryAdd_TimesWithLocalOffset_AreStoredAsTheSameMoment()
+    {
+        var connectionString = await postgres.CreateMigratedDatabaseAsync();
+        await using var db = PostgresFixture.CreateContext(connectionString);
+        var karachi = TimeSpan.FromHours(5);
+        var message = new InboundMessage("wamid.TZ", "920000000001", InboundMessageType.Text, "le li",
+            null, Now.ToOffset(karachi), Now.ToOffset(karachi));
+
+        (await new PostgresInboundMessageStore(db).TryAddAsync(message, CancellationToken.None)).Should().BeTrue();
+
+        var row = await db.InboundMessages.AsNoTracking().SingleAsync();
+        row.ReceivedAt.Should().Be(Now);
+        row.SentAt.Should().Be(Now);
+    }
+
     [Fact] // DB-04: many deliveries of the same message at the same moment -> exactly one wins
     public async Task TryAdd_SameMessageManyTimesInParallel_InsertsExactlyOnce()
     {
@@ -94,6 +111,7 @@ public class InboundMessagesDatabaseTests(PostgresFixture postgres)
         {
             b.UseSetting("WhatsApp:UseFake", "true");
             b.UseSetting("WhatsApp:AppSecret", AppSecret);
+            b.UseEnvironment("Development"); // Development applies migrations at startup
             b.UseSetting("ConnectionStrings:reminder-db", connectionString);
         });
 

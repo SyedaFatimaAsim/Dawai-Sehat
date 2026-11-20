@@ -69,18 +69,30 @@ app.MapPost("/send-message", async (IWhatsappSender whatsappSender, string phone
 app.MapWebhook();
 
 var hasDatabase = !string.IsNullOrWhiteSpace(app.Configuration.GetConnectionString("reminder-db"));
-if (!hasDatabase && !app.Environment.IsDevelopment())
+var migrateOnly = args.Contains("--migrate");
+
+// --migrate is a one-shot deployment step. Without a database it must fail loudly, never fall through
+// to starting the web server (a deploy script would hang waiting for it to exit).
+if (!hasDatabase && (migrateOnly || !app.Environment.IsDevelopment()))
 {
-    throw new InvalidOperationException("ConnectionStrings:reminder-db must be set outside Development.");
+    throw new InvalidOperationException(
+        "ConnectionStrings:reminder-db must be set (always for --migrate, and outside Development).");
+}
+
+if (!hasDatabase)
+{
+    app.Logger.LogWarning("ConnectionStrings:reminder-db is not set: saving webhook messages will fail. Run through the AppHost.");
 }
 
 // Migrations: `dotnet run -- --migrate` applies them and exits (the separate deployment step).
 // In Development they are also applied at startup, so a fresh database just works.
-if (hasDatabase && (args.Contains("--migrate") || app.Environment.IsDevelopment()))
+// If the service starts in production BEFORE --migrate has run, webhook calls return 500 ("relation does not exist")
+// and Meta retries; nothing is lost. See docs/deployment-handoff.md.
+if (hasDatabase && (migrateOnly || app.Environment.IsDevelopment()))
 {
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<ReminderDbContext>().Database.MigrateAsync();
-    if (args.Contains("--migrate")) return;
+    if (migrateOnly) return;
 }
 
 app.Run();

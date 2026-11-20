@@ -7,7 +7,13 @@ public sealed class PostgresInboundMessageStore(ReminderDbContext db) : IInbound
 {
     public async Task<bool> TryAddAsync(InboundMessage message, CancellationToken cancellationToken)
     {
-        var type = message.Type == InboundMessageType.Audio ? "audio" : "text";
+        // An unknown type must fail loudly, not be saved as "text".
+        var type = message.Type switch
+        {
+            InboundMessageType.Text => "text",
+            InboundMessageType.Audio => "audio",
+            _ => throw new ArgumentOutOfRangeException(nameof(message), message.Type, "Unknown message type"),
+        };
 
         // One statement, decided by the database: "insert this row unless the id already exists".
         // Checking first ("does it exist?") and inserting second would race when Meta delivers the same
@@ -17,7 +23,7 @@ public sealed class PostgresInboundMessageStore(ReminderDbContext db) : IInbound
                 (id, whatsapp_message_id, from_number, type, body, media_id, sent_at, received_at)
             VALUES
                 ({Guid.CreateVersion7()}, {message.WhatsappMessageId}, {message.From}, {type},
-                 {message.Body}, {message.MediaId}, {message.SentAt}, {message.ReceivedAt})
+                 {message.Body}, {message.MediaId}, {message.SentAt?.ToUniversalTime()}, {message.ReceivedAt.ToUniversalTime()})
             ON CONFLICT (whatsapp_message_id) DO NOTHING
             """, cancellationToken);
 
