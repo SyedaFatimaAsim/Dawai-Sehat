@@ -1,7 +1,7 @@
+using DawaiSehat.Reminder.Features.ReceiveReplies;
 using DawaiSehat.Reminder.Messaging;
 using DawaiSehat.Reminder.Messaging.Interfaces;
 using DawaiSehat.Reminder.Messaging.Senders;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,7 +11,17 @@ builder.AddServiceDefaults();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 //builder.Services.AddSingleton<IWhatsappSender, FakeWhatsappSender>();
-builder.Services.Configure<WhatsappOptions>(builder.Configuration.GetSection("WhatsApp"));
+// ValidateOnStart: with UseFake=false the app refuses to start if a Meta setting is missing,
+// instead of failing later with a puzzling 401 or 400 while a patient is waiting for a reminder.
+builder.Services.AddOptions<WhatsappOptions>()
+    .Bind(builder.Configuration.GetSection("WhatsApp"))
+    .Validate(o => o.UseFake
+            || (!string.IsNullOrWhiteSpace(o.Token) && !string.IsNullOrWhiteSpace(o.PhoneNumberId)
+                && !string.IsNullOrWhiteSpace(o.VerifyToken) && !string.IsNullOrWhiteSpace(o.AppSecret)),
+        "When WhatsApp:UseFake is false, WhatsApp:Token, WhatsApp:PhoneNumberId, WhatsApp:VerifyToken and WhatsApp:AppSecret must all be set (use dotnet user-secrets).")
+    .ValidateOnStart();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IInboundMessageStore, InMemoryInboundMessageStore>(); // replaced by PostgreSQL in the next PR
 
 var useFake = builder.Configuration.GetValue("WhatsApp:UseFake", true);
 
@@ -49,33 +59,7 @@ app.MapPost("/send-message", async (IWhatsappSender whatsappSender, string phone
     return Results.Ok("Reminder sent");
 });
 
-app.MapGet("/webhook", (
-    [FromQuery(Name = "hub.mode")] string? mode,
-    [FromQuery(Name = "hub.verify_token")] string? token,
-    [FromQuery(Name = "hub.challenge")] string? challenge,
-    IOptions<WhatsappOptions> options,
-    ILogger<Program> logger) =>
-{
-    if (mode == "subscribe" && token == options.Value.VerifyToken)
-    {
-        logger.LogInformation("Webhook verified by Meta");
-        return Results.Text(challenge);
-    }
-
-    logger.LogWarning("Webhook verification failed");
-    return Results.StatusCode(403);
-});
-
-
-app.MapPost("/webhook", async (HttpRequest request, ILogger<Program> logger) =>
-{
-    using var reader = new StreamReader(request.Body);
-    var json = await reader.ReadToEndAsync();
-
-    logger.LogInformation("Webhook received: {Json}", json);
-
-    return Results.Ok();
-});
+app.MapWebhook();
 
 app.Run();
 

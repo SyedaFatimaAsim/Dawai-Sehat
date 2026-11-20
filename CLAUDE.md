@@ -16,7 +16,7 @@ Done so far: solution layout, Reminder service with WhatsApp send and webhook ve
 - `IWhatsappSender` with `FakeWhatsappSender` and `MetaWhatsappSender` (typed HttpClient, `IOptions<WhatsappOptions>`)
 - `POST /send-message`: sends a reminder through the Meta WhatsApp Cloud API
 - `GET /webhook`: Meta verification (hub.mode, hub.verify_token, hub.challenge)
-- `POST /webhook`: receives Meta events; currently only logs the raw JSON
+- `POST /webhook`: checks the Meta signature (`WhatsApp:AppSecret`), reads text and voice messages (`Features/ReceiveReplies/`), keeps Meta's send time, saves them in an in-memory store (PostgreSQL comes next), answers 200; logs counts only, never numbers or text. With `UseFake=false` the app refuses to start if a Meta setting is missing
 - `Domain/ReplyParser`: rule-based reading of replies (Roman Urdu and Urdu script) into `ReplyIntent` (Taken, Later, NotTaken, Unwell, Unknown); not yet connected to the webhook
 - Local testing uses a Visual Studio Dev Tunnel and `src/DawaiSehat.Reminder/DawaiSehat.Reminder.http`
 

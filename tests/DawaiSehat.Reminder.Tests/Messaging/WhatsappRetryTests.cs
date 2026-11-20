@@ -32,6 +32,8 @@ public class WhatsappRetryTests
             b.UseSetting("WhatsApp:UseFake", "false");
             b.UseSetting("WhatsApp:PhoneNumberId", "000000000000000");
             b.UseSetting("WhatsApp:Token", "test-token");
+            b.UseSetting("WhatsApp:VerifyToken", "test-verify-token");
+            b.UseSetting("WhatsApp:AppSecret", "test-app-secret");
             b.ConfigureServices(s => s.AddHttpClient<IWhatsappSender, MetaWhatsappSender>()
                 .ConfigurePrimaryHttpMessageHandler(() => handler));
         });
