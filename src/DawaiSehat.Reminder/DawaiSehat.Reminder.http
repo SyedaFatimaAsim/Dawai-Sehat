@@ -15,7 +15,8 @@ GET {{host}}/webhook?hub.mode=subscribe&hub.verify_token={{verifyToken}}&hub.cha
 ### Webhook verify (ghalat token)
 GET {{host}}/webhook?hub.mode=subscribe&hub.verify_token=ghalat&hub.challenge=12345
 
-### Webhook POST (nakli message, tunnel ke zariye)
+### Webhook POST (nakli message). NOTE: /webhook now needs a valid X-Hub-Signature-256 header,
+### so this unsigned request returns 401. Real Meta calls are signed; see the PR description for signing a test body.
 POST {{tunnel}}/webhook
 Content-Type: application/json
 

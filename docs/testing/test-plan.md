@@ -56,13 +56,37 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | WH-01 | API | Verify with correct token | GET `/webhook?hub.mode=subscribe&hub.verify_token=<configured>&hub.challenge=12345` | 200, body `12345` | P1 | Passing | WebhookVerifyTests.Verify_CorrectToken_ReturnsChallenge |
 | WH-02 | API | Verify with wrong token | Same with `hub.verify_token=wrong` | 403 | P1 | Passing | WebhookVerifyTests.Verify_WrongToken_Returns403 |
 | WH-03 | API | Verify with missing parameters | GET `/webhook` | 403 | P2 | Passing | WebhookVerifyTests.Verify_MissingParameters_Returns403 |
-| WH-04 | API | Valid text message | POST sample Meta payload with `text.body = "le li"` and valid signature | 200; one row in `inbound_messages` | P1 | Planned | |
-| WH-05 | API | Invalid signature | POST payload with wrong `X-Hub-Signature-256` | 401; nothing saved | P1 | Planned | |
-| WH-06 | API | Status update, not a message | POST payload with `statuses` and no `messages` | 200; nothing saved | P2 | Planned | |
-| WH-07 | API | Malformed JSON | POST `{ not json` with valid signature | 200 or 400 as designed; no crash; error logged | P2 | Planned | |
+| WH-04 | API | Valid text message | POST sample Meta payload with `text.body = "le li"` and valid signature | 200; message saved (in-memory store for now; the `inbound_messages` table comes with the PostgreSQL PR) | P1 | Passing | WebhookReceiveTests.Post_ValidSignedTextMessage_Returns200AndStoresIt |
+| WH-05 | API | Invalid signature | POST payload with wrong `X-Hub-Signature-256` | 401; nothing saved | P1 | Passing | WebhookReceiveTests.Post_WrongSignature_Returns401AndStoresNothing |
+| WH-06 | API | Status update, not a message | POST payload with `statuses` and no `messages` | 200; nothing saved | P2 | Passing | WebhookReceiveTests.Post_StatusUpdate_Returns200AndStoresNothing |
+| WH-07 | API | Malformed JSON | POST `{ not json` with valid signature | 200 (decision: a retry of a broken body would not help); nothing saved; error logged without the body | P2 | Passing | WebhookReceiveTests.Post_SignedButMalformedJson_Returns200AndStoresNothing |
 | WH-08 | Integration | Duplicate delivery | POST the same message ID twice | One `inbound_messages` row; one dose update | P1 | Planned | |
 | WH-09 | Integration | Duplicate when Redis is down | Stop Redis container; POST same message twice | Unique index prevents the second row; 200 both times | P2 | Planned | |
 | WH-10 | API | Unknown sender | Message from a number with no patient | 200; saved with no patient; no dose change | P2 | Planned | |
+| WH-11 | API | Empty verify token | No `WhatsApp:VerifyToken` configured; GET with `hub.verify_token=` (empty) | 403 | P1 | Passing | WebhookVerifyEmptyTokenTests.Verify_NoTokenConfiguredAndEmptyTokenSent_Returns403 |
+| WH-12 | API | Missing signature header | POST valid payload without `X-Hub-Signature-256` | 401; nothing saved | P1 | Passing | WebhookReceiveTests.Post_MissingSignatureHeader_Returns401 |
+| WH-13 | API | No App Secret configured | `WhatsApp:AppSecret` empty; POST with any signature | 401 (fail closed) | P1 | Passing | WebhookReceiveTests.Post_NoAppSecretConfigured_Returns401EvenWithSomeSignature |
+| WH-14 | API | Voice note | POST signed audio message | 200; saved with `MediaId`, no body | P2 | Passing | WebhookReceiveTests.Post_AudioMessage_StoresMediaId |
+| WH-15 | API | Duplicate delivery (in-memory) | POST the same message ID twice | 200 both times; stored once. WH-08 repeats this against PostgreSQL | P1 | Passing | WebhookReceiveTests.Post_SameMessageTwice_StoresOnceAndBothReturn200 |
+| WH-16 | API | Oversized body | POST 300 KB | 413; nothing saved | P2 | Passing | WebhookReceiveTests.Post_BodyLargerThanLimit_Returns413 |
+
+### 3.1a Webhook signature and parsing (Reminder Service)
+
+| ID | Level | Scenario | Steps / input | Expected result | Priority | Status | Test name |
+|---|---|---|---|---|---|---|---|
+| SG-01 | Unit | Correct signature | Body signed with the App Secret | Valid | P1 | Passing | WebhookSignatureTests.IsValid_CorrectSignature_ReturnsTrue |
+| SG-02 | Unit | Signed with another secret | Body signed with a different secret | Invalid | P1 | Passing | WebhookSignatureTests.IsValid_SignedWithOtherSecret_ReturnsFalse |
+| SG-03 | Unit | Body changed after signing | Signature of the original body, tampered body | Invalid | P1 | Passing | WebhookSignatureTests.IsValid_BodyChangedAfterSigning_ReturnsFalse |
+| SG-04 | Unit | Missing or broken header | null, empty, no prefix, not hex, wrong length | Invalid; no exception | P1 | Passing | WebhookSignatureTests.IsValid_MissingOrBrokenHeader_ReturnsFalseWithoutThrowing |
+| SG-05 | Unit | No secret configured | Secret null or empty | Invalid (fail closed) | P1 | Passing | WebhookSignatureTests.IsValid_NoSecretConfigured_ReturnsFalse |
+| SG-06 | Unit | Uppercase hex | Same signature in capitals | Valid | P3 | Passing | WebhookSignatureTests.IsValid_UppercaseHex_ReturnsTrue |
+| WP-01 | Unit | Text message | Meta text payload | One `InboundMessage` with id, sender, body, type Text | P1 | Passing | MetaWebhookParserTests.Parse_TextMessage_ReturnsTextMessage |
+| WP-02 | Unit | Voice note | Meta audio payload | One message with `MediaId` | P2 | Passing | MetaWebhookParserTests.Parse_AudioMessage_ReturnsAudioWithMediaId |
+| WP-03 | Unit | Status update | Payload with `statuses` only | No messages | P1 | Passing | MetaWebhookParserTests.Parse_StatusUpdate_ReturnsNothing |
+| WP-04 | Unit | Unsupported type | Image message | Skipped | P2 | Passing | MetaWebhookParserTests.Parse_UnsupportedMessageType_IsSkipped |
+| WP-05 | Unit | Two messages in one post | Payload with two messages | Both returned, in order | P2 | Passing | MetaWebhookParserTests.Parse_TwoMessagesInOnePost_ReturnsBoth |
+| WP-06 | Unit | Incomplete or odd JSON shapes | `{}`, `[]`, missing id, missing text body ... | Nothing returned; no exception | P1 | Passing | MetaWebhookParserTests.Parse_IncompleteShapes_ReturnsNothingWithoutThrowing |
+| WP-07 | Unit | Invalid JSON | `{ not json` | `JsonException` (the endpoint catches it) | P2 | Passing | MetaWebhookParserTests.Parse_InvalidJson_ThrowsJsonException |
 
 ### 3.2 Reply parsing (Reminder Service)
 
