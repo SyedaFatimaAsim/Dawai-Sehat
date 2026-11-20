@@ -17,6 +17,7 @@ Done so far: solution layout, Reminder service with WhatsApp send and webhook ve
 - `POST /send-message`: sends a reminder through the Meta WhatsApp Cloud API
 - `GET /webhook`: Meta verification (hub.mode, hub.verify_token, hub.challenge)
 - `POST /webhook`: receives Meta events; currently only logs the raw JSON
+- `Domain/ReplyParser`: rule-based reading of replies (Roman Urdu and Urdu script) into `ReplyIntent` (Taken, Later, NotTaken, Unwell, Unknown); not yet connected to the webhook
 - Local testing uses a Visual Studio Dev Tunnel and `src/DawaiSehat.Reminder/DawaiSehat.Reminder.http`
 
 ## Target architecture (build towards this step by step)
