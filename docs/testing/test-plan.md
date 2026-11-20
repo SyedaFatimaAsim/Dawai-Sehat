@@ -58,11 +58,11 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | WH-01 | API | Verify with correct token | GET `/webhook?hub.mode=subscribe&hub.verify_token=<configured>&hub.challenge=12345` | 200, body `12345` | P1 | Passing | WebhookVerifyTests.Verify_CorrectToken_ReturnsChallenge |
 | WH-02 | API | Verify with wrong token | Same with `hub.verify_token=wrong` | 403 | P1 | Passing | WebhookVerifyTests.Verify_WrongToken_Returns403 |
 | WH-03 | API | Verify with missing parameters | GET `/webhook` | 403 | P2 | Passing | WebhookVerifyTests.Verify_MissingParameters_Returns403 |
-| WH-04 | API | Valid text message | POST sample Meta payload with `text.body = "le li"` and valid signature | 200; message saved (in-memory store for now; the `inbound_messages` table comes with the PostgreSQL PR) | P1 | Passing | WebhookReceiveTests.Post_ValidSignedTextMessage_Returns200AndStoresIt |
+| WH-04 | API | Valid text message | POST sample Meta payload with `text.body = "le li"` and valid signature | 200; message saved. API test uses a fake store; DB-05 checks the real `inbound_messages` row | P1 | Passing | WebhookReceiveTests.Post_ValidSignedTextMessage_Returns200AndStoresIt |
 | WH-05 | API | Invalid signature | POST payload with wrong `X-Hub-Signature-256` | 401; nothing saved | P1 | Passing | WebhookReceiveTests.Post_WrongSignature_Returns401AndStoresNothing |
 | WH-06 | API | Status update, not a message | POST payload with `statuses` and no `messages` | 200; nothing saved | P2 | Passing | WebhookReceiveTests.Post_StatusUpdate_Returns200AndStoresNothing |
 | WH-07 | API | Malformed JSON | POST `{ not json` with valid signature | 200 (decision: a retry of a broken body would not help); nothing saved; error logged without the body | P2 | Passing | WebhookReceiveTests.Post_SignedButMalformedJson_Returns200AndStoresNothing |
-| WH-08 | Integration | Duplicate delivery | POST the same message ID twice | One `inbound_messages` row; one dose update | P1 | Planned | |
+| WH-08 | Integration | Duplicate delivery | POST the same message ID twice | One `inbound_messages` row; one dose update | P1 | Passing | InboundMessagesDatabaseTests.Webhook_SameMessageDeliveredTwice_LeavesOneRowAndBothReturn200 |
 | WH-09 | Integration | Duplicate when Redis is down | Stop Redis container; POST same message twice | Unique index prevents the second row; 200 both times | P2 | Planned | |
 | WH-10 | API | Unknown sender | Message from a number with no patient | 200; saved with no patient; no dose change | P2 | Planned | |
 | WH-11 | API | Empty verify token | No `WhatsApp:VerifyToken` configured; GET with `hub.verify_token=` (empty) | 403 | P1 | Passing | WebhookVerifyEmptyTokenTests.Verify_NoTokenConfiguredAndEmptyTokenSent_Returns403 |
@@ -74,6 +74,21 @@ This document lists every test case for Dawai Sehat. A pull request that adds or
 | WH-17 | API | Urdu text | POST signed message with body "لے لی" | Stored unchanged (signature is over raw bytes) | P2 | Passing | WebhookReceiveTests.Post_UrduText_IsStoredUnchanged |
 | WH-18 | API | Body exactly at the limit | POST exactly 256 KB, with and without Content-Length | 200 (limit is inclusive) | P2 | Passing | WebhookReceiveTests.Post_BodyExactlyAtLimit_IsAccepted |
 | WH-19 | API | Meta timestamp kept | POST message with `timestamp` | `SentAt` equals Meta time, not "now" (late retries stay correct) | P1 | Passing | WebhookReceiveTests.Post_StoresMetaTimestampAsSentAt |
+
+### 3.1b Inbound messages database (Reminder Service, real PostgreSQL via Testcontainers; needs Docker)
+
+Run only these: `dotnet test --filter "Category=Integration"`.
+
+| ID | Level | Scenario | Steps / input | Expected result | Priority | Status | Test name |
+|---|---|---|---|---|---|---|---|
+| DB-01 | Integration | Migration on an empty database | Apply migrations to a new database | `inbound_messages` exists with a UNIQUE index on `whatsapp_message_id` | P1 | Passing | InboundMessagesDatabaseTests.Migrate_EmptyDatabase_CreatesTableWithUniqueIndexOnMessageId |
+| DB-02 | Integration | New message saved | `TryAddAsync` with a text message (Urdu body) | Returns true; all fields saved as given (UTC) | P1 | Passing | InboundMessagesDatabaseTests.TryAdd_NewMessage_SavesAllFields |
+| DB-03 | Integration | Audio and missing send time | Audio message, no `SentAt` | Saved; `body` and `sent_at` are NULL | P2 | Passing | InboundMessagesDatabaseTests.TryAdd_AudioWithoutSentAt_SavesNullsAsNull |
+| DB-04 | Integration | Same message 20 times in parallel | 20 parallel `TryAddAsync` with one message ID | Exactly one returns true; one row (no race) | P1 | Passing | InboundMessagesDatabaseTests.TryAdd_SameMessageManyTimesInParallel_InsertsExactlyOnce |
+| DB-05 | Integration | Webhook saves a row | Signed POST against a real database (app migrates it at startup in Development) | 200; row with the message and Meta timestamp | P1 | Passing | InboundMessagesDatabaseTests.Webhook_SignedTextMessage_IsSavedInInboundMessagesTable |
+| DB-06 | Integration | Time with a non-UTC offset | Message times with +05:00 offset | Saved as the same moment (UTC); no error | P2 | Passing | InboundMessagesDatabaseTests.TryAdd_TimesWithLocalOffset_AreStoredAsTheSameMoment |
+| DB-07 | API | Production without a connection string | Environment Production, no `ConnectionStrings:reminder-db` | App fails to start; error names the setting | P1 | Passing | DatabaseStartupTests.Start_ProductionWithoutConnectionString_Fails |
+| DB-08 | API | Development without a database | Environment Development, no connection string | App starts (a warning is logged) | P2 | Passing | DatabaseStartupTests.Start_DevelopmentWithoutConnectionString_Starts |
 
 ### 3.1a Webhook signature and parsing (Reminder Service)
 

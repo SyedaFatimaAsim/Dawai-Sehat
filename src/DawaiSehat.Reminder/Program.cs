@@ -1,7 +1,9 @@
+using DawaiSehat.Reminder.Data;
 using DawaiSehat.Reminder.Features.ReceiveReplies;
 using DawaiSehat.Reminder.Messaging;
 using DawaiSehat.Reminder.Messaging.Interfaces;
 using DawaiSehat.Reminder.Messaging.Senders;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,7 +23,12 @@ builder.Services.AddOptions<WhatsappOptions>()
         "When WhatsApp:UseFake is false, WhatsApp:Token, WhatsApp:PhoneNumberId, WhatsApp:VerifyToken and WhatsApp:AppSecret must all be set (use dotnet user-secrets).")
     .ValidateOnStart();
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<IInboundMessageStore, InMemoryInboundMessageStore>(); // replaced by PostgreSQL in the next PR
+// Each service has its own database (reminder_db). Aspire injects ConnectionStrings:reminder-db;
+// when running without Aspire, set it with dotnet user-secrets (it contains a password).
+builder.Services.AddDbContext<ReminderDbContext>((sp, options) =>
+    options.UseNpgsql(sp.GetRequiredService<IConfiguration>().GetConnectionString("reminder-db")
+        ?? throw new InvalidOperationException("ConnectionStrings:reminder-db is not set. Run through the AppHost, or use dotnet user-secrets.")));
+builder.Services.AddScoped<IInboundMessageStore, PostgresInboundMessageStore>();
 
 var useFake = builder.Configuration.GetValue("WhatsApp:UseFake", true);
 
@@ -60,6 +67,33 @@ app.MapPost("/send-message", async (IWhatsappSender whatsappSender, string phone
 });
 
 app.MapWebhook();
+
+var hasDatabase = !string.IsNullOrWhiteSpace(app.Configuration.GetConnectionString("reminder-db"));
+var migrateOnly = args.Contains("--migrate");
+
+// --migrate is a one-shot deployment step. Without a database it must fail loudly, never fall through
+// to starting the web server (a deploy script would hang waiting for it to exit).
+if (!hasDatabase && (migrateOnly || !app.Environment.IsDevelopment()))
+{
+    throw new InvalidOperationException(
+        "ConnectionStrings:reminder-db must be set (always for --migrate, and outside Development).");
+}
+
+if (!hasDatabase)
+{
+    app.Logger.LogWarning("ConnectionStrings:reminder-db is not set: saving webhook messages will fail. Run through the AppHost.");
+}
+
+// Migrations: `dotnet run -- --migrate` applies them and exits (the separate deployment step).
+// In Development they are also applied at startup, so a fresh database just works.
+// If the service starts in production BEFORE --migrate has run, webhook calls return 500 ("relation does not exist")
+// and Meta retries; nothing is lost. See docs/deployment-handoff.md.
+if (hasDatabase && (migrateOnly || app.Environment.IsDevelopment()))
+{
+    using var scope = app.Services.CreateScope();
+    await scope.ServiceProvider.GetRequiredService<ReminderDbContext>().Database.MigrateAsync();
+    if (migrateOnly) return;
+}
 
 app.Run();
 
