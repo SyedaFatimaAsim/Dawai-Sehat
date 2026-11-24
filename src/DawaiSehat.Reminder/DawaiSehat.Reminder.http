@@ -1,6 +1,7 @@
 @host = http://localhost:5069
 @tunnel = https://YOUR-TUNNEL.devtunnels.ms
-@phone = 92XXXXXXXXXX
+# {{phone}} comes from http-client.env.json.user (next to this file, ignored by git, never commit it):
+#   { "dev": { "phone": "92XXXXXXXXXX" } }   <- put your real test number there
 @verifyToken = YOUR_VERIFY_TOKEN
 
 ### App chal rahi hai ya nahi
@@ -8,6 +9,9 @@ GET {{host}}/
 
 ### Reminder bhejna
 POST {{host}}/send-message?phoneNumber={{phone}}&medicine=Panadol
+
+### Template reminder (24 ghante ke bahar bhi chalta hai). Template name/language Meta se match hona chahiye.
+POST {{host}}/send-template/dose-reminder?phoneNumber={{phone}}&patientName=Ammi&medicines=Panadol 500mg, Disprin
 
 ### Webhook verify (sahi token)
 GET {{host}}/webhook?hub.mode=subscribe&hub.verify_token={{verifyToken}}&hub.challenge=12345

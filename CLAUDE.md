@@ -16,6 +16,7 @@ Done so far: solution layout, Reminder service with WhatsApp send and webhook ve
 - `DawaiSehat.Reminder/Data/`: `ReminderDbContext`, EF Core migrations (tool pinned in `dotnet-tools.json`); connection string `ConnectionStrings:reminder-db` (Aspire sets it; without Aspire use `dotnet user-secrets`)
 - `IWhatsappSender` with `FakeWhatsappSender` and `MetaWhatsappSender` (typed HttpClient, `IOptions<WhatsappOptions>`)
 - `POST /send-message`: sends a reminder through the Meta WhatsApp Cloud API
+- Template send: `IWhatsappSender.SendTemplateAsync` with `WhatsappTemplates` (4 approved templates, names and language from config); `POST /send-template/dose-reminder` is for manual testing only
 - `GET /webhook`: Meta verification (hub.mode, hub.verify_token, hub.challenge)
 - `POST /webhook`: checks the Meta signature (`WhatsApp:AppSecret`), reads text and voice messages (`Features/ReceiveReplies/`), saves them in PostgreSQL table `inbound_messages` (unique `whatsapp_message_id`, `INSERT ... ON CONFLICT DO NOTHING`), answers 200; logs counts only, never numbers or text. With `UseFake=false` the app refuses to start if a Meta setting is missing
 - `Domain/ReplyParser`: rule-based reading of replies (Roman Urdu and Urdu script) into `ReplyIntent` (Taken, Later, NotTaken, Unwell, Unknown); not yet connected to the webhook

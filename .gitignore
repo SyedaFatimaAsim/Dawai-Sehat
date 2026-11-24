@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Personal Visual Studio .http variables (real test phone number); never commit
+*.env.json.user

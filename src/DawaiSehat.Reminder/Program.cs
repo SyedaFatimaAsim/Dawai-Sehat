@@ -23,6 +23,7 @@ builder.Services.AddOptions<WhatsappOptions>()
         "When WhatsApp:UseFake is false, WhatsApp:Token, WhatsApp:PhoneNumberId, WhatsApp:VerifyToken and WhatsApp:AppSecret must all be set (use dotnet user-secrets).")
     .ValidateOnStart();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<WhatsappTemplates>();
 // Each service has its own database (reminder_db). Aspire injects ConnectionStrings:reminder-db;
 // when running without Aspire, set it with dotnet user-secrets (it contains a password).
 builder.Services.AddDbContext<ReminderDbContext>((sp, options) =>
@@ -59,12 +60,38 @@ app.UseHttpsRedirection();
 
 app.MapGet("/", () => "Dawai Sehat is running");
 
-app.MapPost("/send-message", async (IWhatsappSender whatsappSender, string phoneNumber, string medicine) =>
+// Manual-testing endpoints, unauthenticated: never expose them with real Meta in production.
+// Remove or protect both once the scheduler exists.
+if (app.Environment.IsDevelopment() || useFake)
 {
-    var text = $"Assalam o Alaikum! {medicine} lene ka waqt ho gaya hai. Lene ke baad 'le li' likh dein.";
-    await whatsappSender.SendMessageAsync(phoneNumber, text);
-    return Results.Ok("Reminder sent");
-});
+    app.MapPost("/send-message", async (IWhatsappSender whatsappSender, string phoneNumber, string medicine) =>
+    {
+        var text = $"Assalam o Alaikum! {medicine} lene ka waqt ho gaya hai. Lene ke baad 'le li' likh dein.";
+        await whatsappSender.SendMessageAsync(phoneNumber, text);
+        return Results.Ok("Reminder sent");
+    });
+
+    app.MapPost("/send-template/dose-reminder", async (IWhatsappSender whatsappSender, WhatsappTemplates templates,
+        string phoneNumber, string patientName, string medicines) =>
+    {
+        if (!System.Text.RegularExpressions.Regex.IsMatch(phoneNumber, @"^92\d{10}$"))
+            return Results.BadRequest("phoneNumber must be 92 followed by 10 digits.");
+
+        TemplateMessage template;
+        try
+        {
+            template = templates.DoseReminder(patientName, medicines);
+        }
+        catch (ArgumentException ex)
+        {
+            // Empty or too long patientName/medicines: short message only, no stack trace.
+            return Results.BadRequest(ex.Message);
+        }
+
+        await whatsappSender.SendTemplateAsync(phoneNumber, template);
+        return Results.Ok("Template sent");
+    });
+}
 
 app.MapWebhook();
 
