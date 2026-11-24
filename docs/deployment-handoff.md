@@ -36,8 +36,14 @@ Status: Reminder service only. Dockerfile and a production health endpoint are p
 | `WhatsApp__VerifyToken` | **yes** | `UseFake=false` | Token you choose; Meta sends it when registering the webhook (GET `/webhook`) |
 | `WhatsApp__AppSecret` | **yes** | `UseFake=false` | Meta App Secret. Used to check `X-Hub-Signature-256` on every POST `/webhook`. Without it every Meta call gets 401 |
 | `WhatsApp__ApiVersion` | no | optional | Default `v25.0` |
+| `WhatsApp__TemplateLanguage` | no | optional | Default `en`. Must equal the language code of the templates in WhatsApp Manager exactly |
+| (none, template names are code) | - | - | Names are constants in `Messaging/TemplateNames.cs`: `welcome_consent`, `dose_reminder`, `caregiver_missed_dose`, `caregiver_unwell_alert`. Not configurable; a different name needs a code change. Name and language must match WhatsApp Manager exactly or Meta returns 400 |
 
 With `UseFake=false` the service **refuses to start** if Token, PhoneNumberId, VerifyToken or AppSecret is empty.
+
+Manual-test endpoints: `POST /send-message` and `POST /send-template/dose-reminder` are unauthenticated and exist **only in Development or when `WhatsApp__UseFake=true`**. In production with `UseFake=false` they return 404.
+
+Before `UseFake=false` works, all four templates (welcome, dose reminder, missed dose, unwell alert) must be approved in WhatsApp Manager, with name and language exactly equal to the configuration above.
 
 ### Webhook behaviour that matters for the load balancer / firewall
 
