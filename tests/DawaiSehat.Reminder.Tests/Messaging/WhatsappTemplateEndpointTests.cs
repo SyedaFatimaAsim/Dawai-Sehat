@@ -37,7 +37,7 @@ public class WhatsappTemplateEndpointTests
             "/send-template/dose-reminder?phoneNumber=920000000001&patientName=Ammi&medicines=Panadol%20500mg,%20Disprin", null);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        sender.Template!.Name.Should().Be("dose_remainder");
+        sender.Template!.Name.Should().Be(TemplateNames.DoseReminder);
         sender.Template.BodyParameters.Should().Equal("Ammi", "Panadol 500mg, Disprin");
     }
 

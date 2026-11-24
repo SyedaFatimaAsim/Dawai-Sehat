@@ -13,9 +13,9 @@ public class FakeWhatsappSenderTests
         var logger = new CapturingLogger<FakeWhatsappSender>();
 
         await new FakeWhatsappSender(logger).SendTemplateAsync("920000000001",
-            new TemplateMessage("dose_remainder", "en", ["Ammi Jaan", "Panadol 500mg"]));
+            new TemplateMessage(TemplateNames.DoseReminder, "en", ["Ammi Jaan", "Panadol 500mg"]));
 
-        logger.AllText.Should().Contain("dose_remainder").And.Contain("2");
+        logger.AllText.Should().Contain(TemplateNames.DoseReminder).And.Contain("2");
         logger.AllText.Should().NotContain("Ammi Jaan").And.NotContain("Panadol").And.NotContain("920000000001");
     }
 

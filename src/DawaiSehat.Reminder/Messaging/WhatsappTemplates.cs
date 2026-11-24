@@ -6,7 +6,8 @@ namespace DawaiSehat.Reminder.Messaging;
 /// <summary>
 /// Builds the four approved templates. One method per template, so the number and order of
 /// parameters are fixed in code and a caller cannot get {{1}}, {{2}} mixed up.
-/// Names and language come from configuration because they must equal Meta's exactly.
+/// Names are the constants in <see cref="TemplateNames"/>; the language code comes from configuration.
+/// Both must equal WhatsApp Manager exactly.
 /// </summary>
 public class WhatsappTemplates
 {
@@ -21,19 +22,19 @@ public class WhatsappTemplates
 
     /// <summary>{{1}} patient name.</summary>
     public TemplateMessage Welcome(string patientName) =>
-        Build(_options.Templates.Welcome, patientName);
+        Build(TemplateNames.Welcome, patientName);
 
     /// <summary>{{1}} patient name, {{2}} medicine list on one line (the caller joins with ", ").</summary>
     public TemplateMessage DoseReminder(string patientName, string medicineList) =>
-        Build(_options.Templates.DoseReminder, patientName, medicineList);
+        Build(TemplateNames.DoseReminder, patientName, medicineList);
 
     /// <summary>{{1}} caregiver, {{2}} patient, {{3}} medicine + strength, {{4}} time (Asia/Karachi).</summary>
     public TemplateMessage MissedDose(string caregiverName, string patientName, string medicineAndStrength, string time) =>
-        Build(_options.Templates.MissedDose, caregiverName, patientName, medicineAndStrength, time);
+        Build(TemplateNames.MissedDose, caregiverName, patientName, medicineAndStrength, time);
 
     /// <summary>{{1}} caregiver, {{2}} patient.</summary>
     public TemplateMessage UnwellAlert(string caregiverName, string patientName) =>
-        Build(_options.Templates.UnwellAlert, caregiverName, patientName);
+        Build(TemplateNames.UnwellAlert, caregiverName, patientName);
 
     private TemplateMessage Build(string name, params string[] parameters) =>
         new(name, _options.TemplateLanguage, parameters.Select(Sanitise).ToList());

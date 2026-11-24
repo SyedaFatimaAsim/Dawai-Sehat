@@ -51,7 +51,7 @@ public class MetaWhatsappSenderTests
     public async Task SendTemplate_Success_PostsTemplatePayload()
     {
         var handler = new StubHandler(HttpStatusCode.OK);
-        var template = new TemplateMessage("dose_remainder", "en", ["Ammi", "Panadol 500mg, Disprin"]);
+        var template = new TemplateMessage(TemplateNames.DoseReminder, "en", ["Ammi", "Panadol 500mg, Disprin"]);
 
         await Create(handler).SendTemplateAsync("920000000001", template);
 
@@ -62,7 +62,7 @@ public class MetaWhatsappSenderTests
         root.GetProperty("to").GetString().Should().Be("920000000001");
         root.GetProperty("type").GetString().Should().Be("template");
         var t = root.GetProperty("template");
-        t.GetProperty("name").GetString().Should().Be("dose_remainder");
+        t.GetProperty("name").GetString().Should().Be(TemplateNames.DoseReminder);
         t.GetProperty("language").GetProperty("code").GetString().Should().Be("en");
         var component = t.GetProperty("components")[0];
         component.GetProperty("type").GetString().Should().Be("body");
@@ -106,7 +106,7 @@ public class MetaWhatsappSenderTests
         var logger = new CapturingLogger<MetaWhatsappSender>();
 
         var act = () => Create(new BodyHandler(HttpStatusCode.BadRequest, metaError), logger)
-            .SendTemplateAsync("920000000001", new TemplateMessage("dose_remainder", "en", ["Ammi Jaan", "Panadol"]));
+            .SendTemplateAsync("920000000001", new TemplateMessage(TemplateNames.DoseReminder, "en", ["Ammi Jaan", "Panadol"]));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         logger.AllText.Should().Contain("131026").And.Contain("OAuthException").And.Contain("TRACE123");
@@ -120,7 +120,7 @@ public class MetaWhatsappSenderTests
         var logger = new CapturingLogger<MetaWhatsappSender>();
 
         var act = () => Create(new BodyHandler(HttpStatusCode.BadGateway, "<html>920000000001</html>"), logger)
-            .SendTemplateAsync("920000000001", new TemplateMessage("dose_remainder", "en", ["x"]));
+            .SendTemplateAsync("920000000001", new TemplateMessage(TemplateNames.DoseReminder, "en", ["x"]));
 
         await act.Should().ThrowAsync<InvalidOperationException>();
         logger.AllText.Should().Contain("BadGateway").And.NotContain("920000000001");

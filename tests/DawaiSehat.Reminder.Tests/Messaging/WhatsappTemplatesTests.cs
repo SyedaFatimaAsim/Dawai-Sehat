@@ -21,11 +21,11 @@ public class WhatsappTemplatesTests
     }
 
     [Fact]
-    public void DoseReminder_UsesTheRealMetaNameWithTypo()
+    public void DoseReminder_UsesTheMetaName()
     {
         var t = Create().DoseReminder("Ammi", "Panadol 500mg, Disprin");
 
-        t.Name.Should().Be("dose_remainder");
+        t.Name.Should().Be("dose_reminder");
         t.BodyParameters.Should().Equal("Ammi", "Panadol 500mg, Disprin");
     }
 
@@ -48,14 +48,13 @@ public class WhatsappTemplatesTests
     }
 
     [Fact]
-    public void Names_And_Language_CanBeOverriddenByConfig()
+    public void Language_CanBeOverriddenByConfig()
     {
         var options = new WhatsappOptions { TemplateLanguage = "ur" };
-        options.Templates.DoseReminder = "dose_reminder_v2";
 
         var t = Create(options).DoseReminder("Ammi", "Panadol");
 
-        t.Name.Should().Be("dose_reminder_v2");
+        t.Name.Should().Be(TemplateNames.DoseReminder);
         t.Language.Should().Be("ur");
     }
 

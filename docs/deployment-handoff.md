@@ -37,7 +37,7 @@ Status: Reminder service only. Dockerfile and a production health endpoint are p
 | `WhatsApp__AppSecret` | **yes** | `UseFake=false` | Meta App Secret. Used to check `X-Hub-Signature-256` on every POST `/webhook`. Without it every Meta call gets 401 |
 | `WhatsApp__ApiVersion` | no | optional | Default `v25.0` |
 | `WhatsApp__TemplateLanguage` | no | optional | Default `en`. Must equal the language code of the templates in WhatsApp Manager exactly |
-| `WhatsApp__Templates__Welcome` / `__DoseReminder` / `__MissedDose` / `__UnwellAlert` | no | optional | Template names (not secret). Defaults `welcome_consent`, `dose_remainder` (typo is real in Meta), `caregiver_missed_dose`, `caregiver_unwell_alert`. Name and language must match WhatsApp Manager exactly or Meta returns 400 |
+| (none, template names are code) | - | - | Names are constants in `Messaging/TemplateNames.cs`: `welcome_consent`, `dose_reminder`, `caregiver_missed_dose`, `caregiver_unwell_alert`. Not configurable; a different name needs a code change. Name and language must match WhatsApp Manager exactly or Meta returns 400 |
 
 With `UseFake=false` the service **refuses to start** if Token, PhoneNumberId, VerifyToken or AppSecret is empty.
 
