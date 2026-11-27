@@ -342,7 +342,7 @@ Rules: every pull request adds or updates tests **and** their entries in the tes
 
 Record this as ADR 001.
 
-## 12. Build plan: 2 weeks (19 Nov to 2 Dec 2026)
+## 12. Build plan: 19 Nov to 6 Dec 2026
 
 Claude Code writes the code and tests; Fatima plans, reviews, merges and deploys. One task = one small pull request with its tests and test-plan rows. Several tasks run per day.
 
@@ -350,31 +350,36 @@ Claude Code writes the code and tests; Fatima plans, reviews, merges and deploys
 
 - Fatima's review time: aim for small pull requests that take 15–30 minutes each to review.
 - Claude Pro usage limits (5-hour and weekly). Plan mode first, small tasks, and no re-runs of large jobs.
-- Things only Fatima can provide: Meta template approval (submit on day 1, can take a day or more), 20 prescription photos, 20 voice notes, medicine catalog review.
+- Things only Fatima can provide: Meta template approval (done), 20 prescription photos, 20 voice notes, medicine catalog review.
 
-### Week 1: Core backend
+**Re-plan on 27 Nov 2026:** work paused for a few days, so the plan was extended from 2 Dec to 6 Dec. Extended features and the Gateway (YARP) move after the release; the Gateway is optional.
 
-| Day | Tasks |
-|---|---|
-| 1 (19 Nov) | ADR 001; solution layout (AppHost, ServiceDefaults, Contracts, test projects); move Api into Reminder Service; CI build + test. **Fatima:** submit reminder template to Meta |
-| 2 (20 Nov) | Webhook parsing, signature check, `inbound_messages`; rule-based reply parser with tests |
-| 3 (21 Nov) | Care Service: Identity + JWT, patients, medicines, schedules, validation |
-| 4 (22 Nov) | Kafka + outbox in both services; schedule events consumed by Reminder (idempotent) |
-| 5 (23 Nov) | Scheduler, dose events, template send, Redis lock, snooze, missed / unwell events, alerts |
-| 6 (24 Nov) | Gateway (YARP); cross-service integration tests; E2E happy and missed paths |
-| 7 (25 Nov) | Buffer, fixes, test report. **Fatima:** first AWS deploy of Care + Reminder |
-
-### Week 2: Prescription RAG, dashboard, extended features
+### Done (19 Nov to 24 Nov)
 
 | Day | Tasks |
 |---|---|
-| 8 (26 Nov) | Prescription Service: catalog + embeddings in pgvector, photo upload, Gemini extraction |
-| 9 (27 Nov) | Retrieval + constrained matching, draft → confirm, RAG evaluation run |
-| 10 (28 Nov) | Dashboard: login, patients, medicines, today's status, alerts, prescription confirm |
-| 11 (29 Nov) | Adherence chart; Dockerfiles, health checks, `deployment-handoff.md`. **Core complete** |
-| 12 (30 Nov) | Extended: voice notes, Gemini fallback for text, refill prediction, appointment reminders |
-| 13 (1 Dec) | Extended: RAG Q&A, weekly report agent, MCP server (read-only) |
-| 14 (2 Dec) | Security tests, README, test report, demo video. **Fatima:** final deploy |
+| 19 Nov | ADR 001; solution layout; move Api into Reminder Service; CI build + test; templates submitted to Meta |
+| 20 Nov | Webhook parsing, signature check, `inbound_messages`; rule-based reply parser |
+| 24 Nov | WhatsApp template send (`dose_reminder`, `welcome_consent`, `caregiver_missed_dose`, `caregiver_unwell_alert`), PR #7 |
+
+### Remaining: Core, then release
+
+| Day | Tasks |
+|---|---|
+| 27 Nov | Care Service: project, `care_db`, AppHost, Identity + JWT, caregiver signup. If time: STOP opt-out in the reply parser |
+| 28 Nov | Care Service: patients, medicines, schedules, validation |
+| 29 Nov | Kafka + outbox in both services; schedule events consumed by Reminder (idempotent) |
+| 30 Nov | Scheduler, dose events, template send, reply parser connected to the webhook |
+| 1 Dec | Snooze, missed / unwell events, caregiver alerts. **The working reminder loop** |
+| 2 Dec | Prescription Service: catalog, photo upload, Gemini extraction |
+| 3 Dec | Retrieval + constrained matching, draft → confirm, RAG evaluation run. **Fatima:** first AWS deploy of Care + Reminder |
+| 4 Dec | Dashboard: login, patients, medicines, today's status, alerts, prescription confirm |
+| 5 Dec | Dockerfiles, health checks, `deployment-handoff.md`, security tests, README, test report, demo video. **Fatima:** final deploy. **Core complete** |
+| 6 Dec | Buffer and fixes |
+
+### After the release (Extended, only if Core is done)
+
+Voice notes, Gemini fallback for text, refill prediction, appointment reminders, RAG Q&A, weekly report agent, MCP server (read-only), Gateway (YARP).
 
 **Rule if a day slips:** Core first, always. Extended features move after the release in this order: MCP server, weekly report agent, RAG Q&A, appointment reminders, voice notes. A feature that is not finished is left out of `master`, not half merged.
 

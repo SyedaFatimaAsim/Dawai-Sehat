@@ -46,7 +46,7 @@ Do not jump ahead. Add a technology only when the current task needs it.
 - Every new behaviour gets tests (unit, API or integration as fits). Run `dotnet build` and `dotnet test` before saying a task is done.
 - Every pull request adds or updates its test cases in `docs/testing/test-plan.md` (ID, scenario, expected result, status, test name). Use fakes for WhatsApp and Gemini in tests; never call real external services in CI.
 - Do not deploy, create cloud resources, or change AWS settings. Deployment is done by Fatima. Instead, keep `docs/deployment-handoff.md` current: Dockerfile, health endpoint, environment variable and secret names (never values), migrations, Kafka topics, Redis use.
-- Deadline: a working application by 4 Dec 2026 (the build plan ends 2 Dec, leaving 2 days of buffer). Core features come before Extended ones (see section 2 and 12 of `docs/architecture.md`). Never merge half-finished features.
+- Deadline: a working application by 6 Dec 2026 (the build plan ends 5 Dec, leaving 1 day of buffer; extended from 4 Dec on 27 Nov). Core features come before Extended ones (see section 2 and 12 of `docs/architecture.md`). Never merge half-finished features.
 - Respond to Meta webhooks with 200 quickly; handle duplicate deliveries idempotently.
 - Store times as UTC (`timestamptz`); show them in Asia/Karachi.
 
